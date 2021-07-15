@@ -42,7 +42,7 @@ router.post("/", async function(req, res, next) {
         `INSERT INTO companies (code, name, description) 
         VALUES ($1, $2, $3) 
         RETURNING code, name, description`,
-        [req.body.code,req.body.name,req.body.description]);
+        [req.body.code, req.body.name, req.body.description]);
 
         return res.status(201).json({company: newCompany.rows[0]});  // 201 CREATED
     } catch (err) {
