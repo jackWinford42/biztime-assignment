@@ -1,17 +1,18 @@
 /** BizTime express application. */
 
-
 const express = require("express");
 
 const app = express();
 const compRoutes = require("./routes/companies")
 const invoicesRoutes = require("./routes/invoices")
+const industryRoutes = require("./routes/industries")
 const ExpressError = require("./expressError")
 
 app.use(express.json());
 
 app.use("/companies", compRoutes)
 app.use("/invoices", invoicesRoutes)
+app.use("/industries", industryRoutes)
 
 /** 404 handler */
 

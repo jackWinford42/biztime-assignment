@@ -17,7 +17,7 @@ router.get("/", async function(req, res, next) {
 });
 
 /** GET /[id] - return data about one invoice: 
- * `{invoice: {id, amt, paid, add_date, paid_date, invoice:
+ * `{invoice: {id, amt, paid, add_date, paid_date, company:
  *  {code, name, description}}}` */
 
 router.get("/:id", async function(req, res, next) {
@@ -54,7 +54,7 @@ router.post("/", async function(req, res, next) {
     }
 });
 
-/** PUT /[id] - update fields in invoices; 
+/** PUT /[id] - update amt in invoices; 
  * returns: {invoice: {id, comp_code, amt, paid, add_date, paid_date}}
  */
 
@@ -63,13 +63,31 @@ router.put("/:id", async function(req, res, next) {
         if ("id" in req.body) {
             throw new ExpressError("Not allowed", 400)
         }
+        
+        const oneInvoice = await db.query(
+            "SELECT * FROM invoices WHERE id = $1;", [req.params.id])
 
+        if (oneInvoice.rows.length === 0) {
+            let notFoundError = new Error(`There is no invoice with id ${req.params.id}`);
+            notFoundError.status = 404;
+            throw notFoundError;
+        }
+        toUpdate = oneInvoice.rows[0]
+
+        let date;
+        if (req.body.paid == true) {
+            date = new Date()
+        } else if (req.body.paid == false) {
+            date = null
+        } else {
+            date = toUpdate['paid_date']
+        }
         const result = await db.query(
         `UPDATE invoices 
-        SET amt=$1
-        WHERE id = $2
+        SET amt=$1, paid_date=$2
+        WHERE id = $3
         RETURNING id, comp_code, amt, paid, add_date, paid_date`,
-        [req.body.amt,req.params.id]);
+        [req.body.amt, date, req.params.id]);
 
         if (result.rows.length === 0) {
             throw new ExpressError(`There is no invoice with id of '${req.params.id}`, 404);

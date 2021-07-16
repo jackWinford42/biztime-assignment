@@ -1,5 +1,5 @@
 /** Routes for companies. */
-
+const slugify = require("slugify");
 const express = require("express");
 const router = new express.Router();
 const db = require("../db")
@@ -16,19 +16,39 @@ router.get("/", async function(req, res, next) {
     }
 });
 
-/** GET /[code] - return data about one company: `{company: company}` */
+/** GET /[code] - return data about one company: `{company: company}`
+ *  and the companies industries 
+ */
 
 router.get("/:code", async function(req, res, next) {
     try {
         const oneCompany = await db.query(
-            "SELECT code, name, description FROM companies WHERE code = $1;", [req.params.code])
+            "SELECT code, name, description FROM companies WHERE code = $1;", 
+            [req.params.code]);
+
+        const compsIndustriesCodes = await db.query(
+            "SELECT indus_code, comp_code FROM industries_and_companies WHERE comp_code = $1", 
+            [req.params.code]);
+
+        let industries = [];
+        if (compsIndustriesCodes) {
+            
+            for (const index in compsIndustriesCodes.rows) {
+                const code = compsIndustriesCodes.rows[index]['indus_code']
+                const resp = await db.query(
+                    "SELECT industry FROM industries WHERE code = $1",
+                    [code]
+                )
+                industries.push(resp.rows[0]['industry'])
+            }
+        }
 
         if (oneCompany.rows.length === 0) {
             let notFoundError = new Error(`There is no company with code ${req.params.code}`);
             notFoundError.status = 404;
             throw notFoundError;
         }
-        return res.json({ company: oneCompany.rows[0] });
+        return res.json({ company: oneCompany.rows[0], industry: industries});
     } catch (err) {
         return next(err);
     }
@@ -52,8 +72,9 @@ router.post("/", async function(req, res, next) {
 
 /** PUT /[code] - update fields in companies; return `{company: company}` */
 
-router.put("/:code", async function(req, res, next) {
+router.put("/", async function(req, res, next) {
     try {
+        const code = slugify(req.body.name, {remove: /[*+~.()'"!:@]/g, lower: true});
         if ("code" in req.body) {
             throw new ExpressError("Not allowed", 400)
         }
@@ -63,10 +84,10 @@ router.put("/:code", async function(req, res, next) {
         SET name=$1, description=$2
         WHERE code = $3
         RETURNING code, name, description`,
-        [req.body.name, req.body.description, req.params.code]);
+        [req.body.name, req.body.description, code]);
 
         if (result.rows.length === 0) {
-            throw new ExpressError(`There is no company with code of '${req.params.code}`, 404);
+            throw new ExpressError(`There is no company with code of '${code}`, 404);
         }
 
         return res.json({ company: result.rows[0]});

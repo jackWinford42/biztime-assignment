@@ -1,3 +1,11 @@
+/** Run with these variable for tests
+ * $ PGUSER=yourUser 
+ * PGHOST='localhost' 
+ * PGPASSWORD=yourPassword 
+ * PGDATABASE=biztime_test 
+ * PGPORT=5432 
+ * jest
+ */
 // npm packages
 const request = require("supertest");
 
@@ -10,7 +18,7 @@ let testCompany;
 beforeEach(async function() {
     let result = await db.query(`
     INSERT INTO companies (code, name, description) 
-    VALUES ('windows', 'microsoft', 'blueIcon')
+    VALUES ('microsoft', 'Microsoft', 'windows')
     RETURNING code, name, description`);
     testCompany = result.rows[0];
 });
@@ -34,7 +42,7 @@ describe("GET /companies/:code", function() {
     test("Gets a single company", async function() {
         const response = await request(app).get(`/companies/${testCompany.code}`);
         expect(response.statusCode).toEqual(200);
-        expect(response.body).toEqual({company: testCompany});
+        expect(response.body).toEqual({company: testCompany, industry: []});
     });
 
     test("Responds with 404 if can't find company", async function() {
@@ -65,17 +73,17 @@ describe("POST /companies", function() {
 
 /** PUT /[code] - update fields in companies; return `{company: company}` */
 
-describe("PUT /companies/:code", function() {
+describe("PUT /companies", function() {
     test("Updates a single company", async function() {
         const response = await request(app)
-        .put(`/companies/${testCompany.code}`)
+        .put(`/companies`)
         .send({
-            name: "Macrosoft",
+            name: "Microsoft",
             description: "Doors"
         });
         expect(response.statusCode).toEqual(200);
         expect(response.body).toEqual({
-            company: {code: testCompany.code, name: "Macrosoft", description: "Doors"}
+            company: {code: testCompany.code, name: "Microsoft", description: "Doors"}
         });
     });
 
